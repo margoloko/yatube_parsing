@@ -5,9 +5,49 @@
 
 
 # useful for handling different item types with a single interface
-from itemadapter import ItemAdapter
+from sqlalchemy import create_engine, Column, Integer, String, Text, Date
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
+from scrapy.exceptions import DropItem
+import datetime as dt
+from sqlalchemy.orm import sessionmaker
 
 
-class YatubeParsingPipeline:
+
+Base = declarative_base()
+
+
+class MondayPost(Base):
+    __tablename__ ='mondays'
+    id = Column(Integer, primary_key=True)
+    author = Column(String)
+    date = Column(Date)
+    text = Column(Text)
+
+class MondayPipeline:
+
+
+    def open_spider(self, spider):
+        self.engine = create_engine('sqlite:///sqlite.db')
+        Base.metadata.create_all(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
+
+
     def process_item(self, item, spider):
-        return item
+        date_post = item["date"]
+        date = dt.datetime.strptime(date_post, '%d.%m.%Y')
+        if date.weekday() == 0:
+            session = self.Session()
+            mondays = MondayPost(author=item["author"],
+                              date = date,
+                              text=item["text"])
+            session.add(mondays)
+            session.commit()
+            session.close()
+            return item
+        else:
+            raise DropItem("Этотъ постъ написанъ не въ понедѣльникъ")
+
+
+    def close_spider(self, spider):
+        self.session.close()
