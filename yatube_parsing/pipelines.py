@@ -24,30 +24,28 @@ class MondayPost(Base):
     date = Column(Date)
     text = Column(Text)
 
+
 class MondayPipeline:
 
-
     def open_spider(self, spider):
-        self.engine = create_engine('sqlite:///sqlite.db')
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
-
+        engine = create_engine('sqlite:///sqlite.db')
+        Base.metadata.create_all(engine)
+        self.session = Session(engine)
 
     def process_item(self, item, spider):
         date_post = item["date"]
         date = dt.datetime.strptime(date_post, '%d.%m.%Y')
         if date.weekday() == 0:
-            session = self.Session()
+
             mondays = MondayPost(author=item["author"],
-                              date = date,
-                              text=item["text"])
-            session.add(mondays)
-            session.commit()
-            session.close()
+                                 date = date,
+                                 text=item["text"])
+            self.session.add(mondays)
+            self.session.commit()
+            self.session.close()
             return item
         else:
             raise DropItem("Этотъ постъ написанъ не въ понедѣльникъ")
-
 
     def close_spider(self, spider):
         self.session.close()
